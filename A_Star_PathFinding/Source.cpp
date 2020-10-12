@@ -149,9 +149,9 @@ int FixedUpdate()
 	manager.ToDrawList.clear();
 
 	//Breadth First Search
-	BreadthFirst();
+	//BreadthFirst();
 	
-	//AStar();
+	AStar();
 
 	
 
