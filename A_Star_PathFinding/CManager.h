@@ -9,6 +9,7 @@ class CManager
 public:
 
 	sf::RenderWindow* window = nullptr;
+	sf::RenderWindow* controlWindow = nullptr;
 
 	sf::Font font;
 
@@ -27,6 +28,7 @@ public:
 
 
 	sf::Clock clock;
+	int slowed = 1;
 	float step = (1.0f / 60.0f);
 	int currentStep = 0;
 

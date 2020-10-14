@@ -17,11 +17,8 @@
 void CreateButton(void(*function)(), std::string _string, int _fontSize, sf::Color _tColour, sf::Text::Style _style, float _x, float _y, sf::Color _bgColour, float _padding);
 
 int FixedUpdate();
-void BreadthFirst();
 void AStar();
 void ProcessTile(CTile* _tile, std::vector<CTile*>& neighbours, std::vector<CTile*>& toAdd, std::vector<CTile*>& toRemove);
-bool AreAllNeighboursDone(std::vector<CTile*>& neighbours, std::vector<CTile*>& toAdd);
-void AddToSearch(std::vector<CTile*>& toAdd, CTile* _tile, CTile* _neighbour);
 void RemoveTileFromVector(CTile* _tile, std::vector<CTile*>& _vector);
 bool DoesTileExistInVector(CTile* _tile, std::vector<CTile*>& _vector);
 std::vector<CTile*> GetNeighbours(CTile* _tile);
@@ -34,9 +31,8 @@ CManager manager;
 
 void StartStopSearch() {
 	manager.startFinding = !manager.startFinding;
-	manager.Buttons[0]->text->setString(manager.startFinding ? "Stop" : "Start");
+	manager.Buttons[0]->text->setString(manager.startFinding ? "PAUSE" : "PLAY");
 	manager.Buttons[0]->rect->setFillColor(manager.startFinding ? sf::Color::Red : sf::Color::Color(0, 150, 0));
-	//manager.step = (manager.startFinding ? (1.0f / 5.0f) : (1.0f / 60.0f));
 }
 
 void ClearSearch() {
@@ -51,11 +47,15 @@ void ClearSearch() {
 				manager.tiles[x][y]->SetType(TileType::Empty);
 			}
 			manager.tiles[x][y]->arrayPos = { x,y };
+			manager.tiles[x][y]->c = std::numeric_limits<float>::max();
+			manager.tiles[x][y]->previous = nullptr;
 		}
 	}
 
 	manager.start = manager.tiles[10][20];
 	manager.end = manager.tiles[30][20];
+
+	manager.start->c = 0;
 
 	manager.start->SetType(TileType::Start);
 	manager.end->SetType(TileType::End);
@@ -83,15 +83,35 @@ void ClearWalls() {
 	}
 }
 
+void AllowDiagonal() {
+	manager.allowDiagonal = !manager.allowDiagonal;
+	manager.Buttons[3]->rect->setFillColor(manager.allowDiagonal ? sf::Color::Color(0, 150, 0) : sf::Color::Red);
+}
+
+void Speed() {
+	manager.slowed += 5;
+	manager.slowed = std::floor(manager.slowed / 5) * 5;
+	if (manager.slowed > 60) {
+		manager.slowed = 1;
+	}
+	manager.Buttons[4]->text->setString(std::to_string(60.0f / (float)manager.slowed).substr(0,4) +" steps/s");
+}
+
 int main() {
 	sf::RenderWindow window(sf::VideoMode(800, 800), "A* Pathfinding - By Keane Carotenuto");
+	sf::RenderWindow controlWindow(sf::VideoMode(200, 200), "Controls");
+	controlWindow.setPosition(sf::Vector2i(window.getPosition().x +  window.getSize().x, window.getPosition().y));
+
 	manager.window = &window;
+	manager.controlWindow = &controlWindow;
 
 	if (!manager.font.loadFromFile("Fonts/Roboto.ttf")) std::cout << "Failed to load Roboto\n";
 
-	CreateButton(&StartStopSearch, "Start", 25, sf::Color::White, sf::Text::Style::Regular, 0, 0, sf::Color::Color(0,150,0), 5);
-	CreateButton(&ClearSearch, "Clear Search", 25, sf::Color::White, sf::Text::Style::Regular, 0, 40, sf::Color::Red, 5);
-	CreateButton(&ClearWalls, "Clear Walls", 25, sf::Color::White, sf::Text::Style::Regular, 0, 80, sf::Color::Red, 5);
+	CreateButton(&StartStopSearch, "PLAY", 25, sf::Color::White, sf::Text::Style::Bold, 0, 0, sf::Color::Color(0,150,0), 5);
+	CreateButton(&ClearSearch, "CLEAR SEARCH", 25, sf::Color::White, sf::Text::Style::Bold, 0, 40, sf::Color::Red, 5);
+	CreateButton(&ClearWalls, "CLEAR WALLS", 25, sf::Color::White, sf::Text::Style::Bold, 0, 80, sf::Color::Red, 5);
+	CreateButton(&AllowDiagonal, "DIAGONAL", 25, sf::Color::White, sf::Text::Style::Bold, 0, 120, sf::Color::Red, 5);
+	CreateButton(&Speed, "60.0 steps/s", 25, sf::Color::White, sf::Text::Style::Bold, 0, 160, sf::Color::Red, 5);
 	
 	ClearSearch();
 
@@ -147,13 +167,8 @@ int FixedUpdate()
 {
 	manager.currentStep ++;
 	manager.ToDrawList.clear();
-
-	//Breadth First Search
-	//BreadthFirst();
 	
 	AStar();
-
-	
 
 	if (sf::Mouse::isButtonPressed(sf::Mouse::Left) || sf::Mouse::isButtonPressed(sf::Mouse::Right))
 	{
@@ -183,6 +198,7 @@ int FixedUpdate()
 	}
 
 	if (manager.foundRoute && !manager.drawnRoute) {
+		StartStopSearch();
 		manager.drawnRoute = true;
 
 		CTile* currentTile = manager.end;
@@ -210,101 +226,35 @@ int FixedUpdate()
 	return 1;
 }
 
-void BreadthFirst()
-{
-	if (!manager.foundRoute && manager.startFinding && manager.currentStep % 6 == 0) {
-		std::vector<CTile*> toUpdate;
-
-		for (int x = 0; x < 40; x++) {
-			for (int y = 0; y < 40; y++) {
-
-				if (manager.tiles[x][y]->type == TileType::Start || manager.tiles[x][y]->type == TileType::EmptySearched) {
-
-					int tempx = 0;
-					int tempy = 0;
-					for (int i = 0; i < 4; i++) {
-						//Sleep(100);
-
-						switch (i)
-						{
-
-						case 0:
-							tempx = x + 1;
-							tempy = y;
-							break;
-
-						case 1:
-							tempx = x;
-							tempy = y + 1;
-							break;
-
-						case 2:
-							tempx = x - 1;
-							tempy = y;
-							break;
-
-						case 3:
-							tempx = x;
-							tempy = y - 1;
-							break;
-						}
-
-						if (tempx < 0 || tempx > 39 || tempy < 0 || tempy > 39 || manager.tiles[tempx][tempy]->type == TileType::EmptySearching) continue;
-
-						if (manager.tiles[tempx][tempy]->type == TileType::Empty || manager.tiles[tempx][tempy]->type == TileType::End) {
-							manager.tiles[x][y]->next.push_back(manager.tiles[tempx][tempy]);
-
-							manager.tiles[tempx][tempy]->previous = manager.tiles[x][y];
-
-							sf::VertexArray* lines = new sf::VertexArray(sf::LineStrip, 2);
-							lines->operator[](0).position = sf::Vector2f(manager.tiles[x][y]->sprite->getPosition().x + 10, manager.tiles[x][y]->sprite->getPosition().y + 10);
-							lines->operator[](0).color = sf::Color::Red;
-							lines->operator[](1).position = sf::Vector2f(manager.tiles[tempx][tempy]->sprite->getPosition().x + 10, manager.tiles[tempx][tempy]->sprite->getPosition().y + 10);
-							lines->operator[](1).color = sf::Color::Red;
-
-							manager.lines.push_back(lines);
-
-							if (manager.tiles[tempx][tempy]->type == TileType::End) {
-								manager.foundRoute = true;
-								goto update;
-							}
-							else {
-								toUpdate.push_back(manager.tiles[tempx][tempy]);
-								manager.tiles[tempx][tempy]->SetType(TileType::EmptySearching);
-							}
-						}
-					}
-				}
-			}
-		}
-
-	update:
-		for (CTile* _tile : toUpdate) {
-			_tile->SetType(TileType::EmptySearched);
-		}
-	}
-}
 
 void AStar() {
 	//if finding, and step is multiple of 6
-	if (!manager.foundRoute && manager.startFinding && manager.currentStep % 1 == 0) {
+	if (!manager.foundRoute && manager.startFinding && manager.currentStep % manager.slowed == 0) {
 
 		std::vector<CTile*> toAdd;
 		std::vector<CTile*> toRemove;
 
-		for (CTile* _tile : manager.searchStack) {
-			
-			std::vector<CTile*> neighbours = GetNeighbours(_tile);
+		//If nore more tiles to search, re-checks done tiles for empty spaces
+		if (manager.searchStack.empty()) {
+			for (CTile* _tile : manager.doneStack) {
+				std::vector<CTile*> neighbours = GetNeighbours(_tile);
 
-			if (_tile == manager.searchStack[0]) {
-				ProcessTile(_tile, neighbours, toAdd, toRemove);
+				if (!neighbours.empty()) {
+					toAdd.push_back(_tile);
+				}
+				
 			}
-			else if (AreAllNeighboursDone(neighbours, toAdd)) {
-				ProcessTile(_tile, neighbours, toAdd, toRemove);
-			}
-
-			
 		}
+
+		for (CTile* _tile : manager.searchStack) {
+			if (_tile == manager.searchStack[0]) {
+				std::vector<CTile*> neighbours = GetNeighbours(_tile);
+				ProcessTile(_tile, neighbours, toAdd, toRemove);
+				break;
+			}
+		}
+
+		
 
 		done:
 
@@ -322,72 +272,21 @@ void AStar() {
 
 void ProcessTile(CTile* _tile, std::vector<CTile*>& neighbours, std::vector<CTile*>& toAdd, std::vector<CTile*>& toRemove)
 {
-	
-
 	for (CTile* _neighbour : neighbours) {
 		if (!DoesTileExistInVector(_neighbour, manager.searchStack) && !DoesTileExistInVector(_neighbour, manager.doneStack) && !DoesTileExistInVector(_neighbour, toAdd)) {
-			AddToSearch(toAdd, _tile, _neighbour);
+			toAdd.push_back(_neighbour);
+			if (_neighbour->type != TileType::Start && _neighbour->type != TileType::End) _neighbour->SetType(TileType::EmptySearching);
 		}
 
 		if (_neighbour == manager.end) {
 			manager.foundRoute = true;
-
-			return;
 		}
 	}
-
-	bool allNeighbhoursDone = AreAllNeighboursDone(neighbours, toAdd);;
 	
 
-	if (allNeighbhoursDone || _tile) {
-		manager.doneStack.push_back(_tile);
-		_tile->SetType(TileType::EmptySearched);
-		toRemove.push_back(_tile);
-	}
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-///////////////////////////////////////////////////////// DOOOOOOOOOOOOOOOO A DISTANCE CHECK OR SOMETHING HERE SO CLOSER NEIGHBHOURS CAN BE OVER RIDDEN BY BETTER ONES
-
-
-bool AreAllNeighboursDone(std::vector<CTile*>& neighbours, std::vector<CTile*>& toAdd)
-{
-	bool done = true;
-	for (CTile* _neighbour : neighbours) {
-		if (/*!DoesTileExistInVector(_neighbour, manager.searchStack) &&*/ !DoesTileExistInVector(_neighbour, manager.doneStack) /*&& !DoesTileExistInVector(_neighbour, toAdd)*/) {
-			done = false;
-		}
-	}
-
-	return done;
-}
-
-void AddToSearch(std::vector<CTile*>& toAdd, CTile* _tile, CTile* _neighbour)
-{
-	_neighbour->value = 14 * FindDistanceToTile(_neighbour, manager.end) + 10 * FindDistanceToTile(_neighbour, manager.start);
-	toAdd.push_back(_neighbour);
-	CreateLine(_tile, _neighbour);
-
-	_tile->next.push_back(_neighbour);
-	_neighbour->previous = _tile;
-
+	if (_tile->type != TileType::Start && _tile->type != TileType::End) _tile->SetType(TileType::EmptySearched);
+	if (!DoesTileExistInVector(_tile, manager.doneStack)) manager.doneStack.push_back(_tile);
+	toRemove.push_back(_tile);
 }
 
 void RemoveTileFromVector(CTile* _tile, std::vector<CTile*>& _vector)
@@ -462,9 +361,25 @@ std::vector<CTile*> GetNeighbours(CTile* _tile) {
 		}
 
 		if (tempx < 0 || tempx > 39 || tempy < 0 || tempy > 39) continue;
-		if (manager.tiles[tempx][tempy]->type == TileType::Wall) continue;
 
-		neigh.push_back(manager.tiles[tempx][tempy]);
+		CTile* tempN = manager.tiles[tempx][tempy];
+
+		if (DoesTileExistInVector(tempN, manager.doneStack)) continue;
+		if (tempN->type == TileType::Wall) continue;
+
+
+		float tempC = _tile->c + FindDistanceToTile(_tile, tempN);
+		if (tempN->c > tempC) {
+			tempN->c = tempC;
+			tempN->previous = _tile;
+			CreateLine(_tile, tempN);
+		}
+		tempN->d = FindDistanceToTile(tempN, manager.end);
+		tempN->f = tempN->c + tempN->d;
+		
+
+
+		neigh.push_back(tempN);
 	}
 
 	return neigh;
@@ -483,7 +398,7 @@ void CreateLine(CTile* _tile, CTile* _tile2)
 float FindDistanceToTile(CTile * start, CTile * end)
 {
 	float dist = 0;
-	if (manager.allowDiagonal) {
+	if (manager.allowDiagonal && end != manager.end) {
 		dist = std::sqrt((start->arrayPos.x - end->arrayPos.x) * (start->arrayPos.x - end->arrayPos.x) + (start->arrayPos.y - end->arrayPos.y) * (start->arrayPos.y - end->arrayPos.y));
 	}
 	else {
@@ -505,7 +420,7 @@ void CheckButtonsPressed()
 			{
 
 				//If click, do func
-				if (_button->rect->getGlobalBounds().contains((sf::Vector2f)sf::Mouse::getPosition(*manager.window))) {
+				if (_button->rect->getGlobalBounds().contains((sf::Vector2f)sf::Mouse::getPosition(*manager.controlWindow))) {
 					std::cout << "ClickED\n";
 					if (_button->function != nullptr) _button->function();
 				}
@@ -525,16 +440,20 @@ void CreateButton(void(*function)(), std::string _string, int _fontSize, sf::Col
 	tempText->setCharacterSize(_fontSize);
 	tempText->setFillColor(_tColour);
 	tempText->setStyle(_style);
-	tempText->setPosition(_x, _y);
 	tempText->setFont(manager.font);
 
+	tempText->setPosition(100 - (tempText->getGlobalBounds().width) / 2, _y);
+	
+	
 	sf::RectangleShape* buttonRect = new sf::RectangleShape;
-	buttonRect->setPosition(tempText->getGlobalBounds().left - _padding, tempText->getGlobalBounds().top - _padding);
-	buttonRect->setSize(sf::Vector2f(tempText->getGlobalBounds().width + (2 * _padding), tempText->getGlobalBounds().height + (2 * _padding)));
+	buttonRect->setPosition(0, tempText->getGlobalBounds().top - _padding);
+	buttonRect->setSize(sf::Vector2f(200, 30));
 	buttonRect->setFillColor(_bgColour);
 
 	CButton* button = new CButton(buttonRect, tempText, function);
 	manager.Buttons.push_back(button);
+
+	//manager.controlWindow->setSize(sf::Vector2u( (float)200, (float)buttonRect->getGlobalBounds().top + (float)buttonRect->getGlobalBounds().height));
 }
 
 void Draw()
@@ -545,11 +464,17 @@ void Draw()
 		manager.window->draw(*item);
 	}
 
+	manager.window->display();
+
+
+	manager.controlWindow->clear();
+
 	for (CButton* button : manager.Buttons) {
-		manager.window->draw(*button->rect);
+		manager.controlWindow->draw(*button->rect);
 		button->text->setFont(manager.font);
-		manager.window->draw(*button->text);
+		manager.controlWindow->draw(*button->text);
 	}
 
-	manager.window->display();
+	manager.controlWindow->display();
+	
 }

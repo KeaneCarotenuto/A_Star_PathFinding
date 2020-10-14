@@ -33,6 +33,10 @@ public:
 
 	float value = 0;
 
+	float c = 0;
+	float d = 0;
+	float f = 0;
+
 	CTile* previous = nullptr;
 	std::vector<CTile*> next;
 
@@ -42,9 +46,8 @@ public:
 
 	static bool IsSmaller (const CTile* _tile, const CTile* _tile2)
 	{
-		return (_tile->value < _tile2->value);
+		return (_tile->f < _tile2->f);
 	}
 
 	virtual void draw(sf::RenderTarget& target, sf::RenderStates states)const;
 };
-
