@@ -254,8 +254,6 @@ void AStar() {
 			}
 		}
 
-		
-
 		done:
 
 		for (CTile* _tile : toAdd) {
@@ -266,7 +264,6 @@ void AStar() {
 		}
 
 		std::sort(manager.searchStack.begin(), manager.searchStack.end(), CTile::IsSmaller);
-		//std::reverse(manager.searchStack.begin(), manager.searchStack.end());
 	}
 }
 
@@ -415,13 +412,11 @@ void CheckButtonsPressed()
 	if (sf::Mouse::isButtonPressed(sf::Mouse::Button::Left)) {
 		
 		if (!manager.frozenClick) {
-			std::cout << "Click\n";
 			for (CButton* _button : manager.Buttons)
 			{
 
 				//If click, do func
 				if (_button->rect->getGlobalBounds().contains((sf::Vector2f)sf::Mouse::getPosition(*manager.controlWindow))) {
-					std::cout << "ClickED\n";
 					if (_button->function != nullptr) _button->function();
 				}
 			}
