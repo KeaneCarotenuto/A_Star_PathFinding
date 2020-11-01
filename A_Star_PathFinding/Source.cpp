@@ -35,7 +35,7 @@ void StartStopSearch() {
 	manager.Buttons[0]->rect->setFillColor(manager.startFinding ? sf::Color::Red : sf::Color::Color(0, 150, 0));
 }
 
-void ClearSearch() {
+void Reset() {
 	for (int x = 0; x < 40; x++) {
 		for (int y = 0; y < 40; y++) {
 			if (manager.tiles[x][y] == nullptr) {
@@ -108,12 +108,12 @@ int main() {
 	if (!manager.font.loadFromFile("Fonts/Roboto.ttf")) std::cout << "Failed to load Roboto\n";
 
 	CreateButton(&StartStopSearch, "PLAY", 25, sf::Color::White, sf::Text::Style::Bold, 0, 0, sf::Color::Color(0,150,0), 5);
-	CreateButton(&ClearSearch, "CLEAR SEARCH", 25, sf::Color::White, sf::Text::Style::Bold, 0, 40, sf::Color::Red, 5);
+	CreateButton(&Reset, "Reset", 25, sf::Color::White, sf::Text::Style::Bold, 0, 40, sf::Color::Red, 5);
 	CreateButton(&ClearWalls, "CLEAR WALLS", 25, sf::Color::White, sf::Text::Style::Bold, 0, 80, sf::Color::Red, 5);
 	CreateButton(&AllowDiagonal, "DIAGONAL", 25, sf::Color::White, sf::Text::Style::Bold, 0, 120, sf::Color::Red, 5);
 	CreateButton(&Speed, "60.0 steps/s", 25, sf::Color::White, sf::Text::Style::Bold, 0, 160, sf::Color::Red, 5);
 	
-	ClearSearch();
+	Reset();
 
 	float stepTime = 0;
 	bool drawn = false;
@@ -179,12 +179,37 @@ int FixedUpdate()
 				sf::Vector2f mousePos = (sf::Vector2f)sf::Mouse::getPosition(*manager.window);
 
 				if (manager.tiles[x][y]->sprite->getGlobalBounds().contains(mousePos)) {
-					manager.tiles[x][y]->SetType(
-						sf::Mouse::isButtonPressed(sf::Mouse::Left) &&
-						manager.tiles[x][y]->type == TileType::Empty ?
-						TileType::Wall : 
-						(sf::Mouse::isButtonPressed(sf::Mouse::Right) &&
-						manager.tiles[x][y]->type == TileType::Wall ? TileType::Empty : manager.tiles[x][y]->type));
+					if (sf::Mouse::isButtonPressed(sf::Mouse::Left) && manager.tiles[x][y]->type == TileType::Empty) {
+						if (sf::Keyboard::isKeyPressed(sf::Keyboard::LShift) && manager.startFinding == false) {
+							//reset start tile
+							manager.start->SetType(TileType::Empty);
+							manager.start->c = std::numeric_limits<float>::max();
+
+							//assign new start tile
+							manager.tiles[x][y]->SetType(TileType::Start);
+							manager.start = manager.tiles[x][y];
+							manager.start->c = 0;
+
+							manager.searchStack.clear();
+							manager.searchStack.push_back(manager.start);
+						}
+						else {
+							manager.tiles[x][y]->SetType(TileType::Wall);
+						}
+						
+					}
+					if (sf::Mouse::isButtonPressed(sf::Mouse::Right)) {
+						if (sf::Keyboard::isKeyPressed(sf::Keyboard::LShift) && manager.startFinding == false && manager.tiles[x][y]->type == TileType::Empty) {
+							manager.end->SetType(TileType::Empty);
+							manager.end = manager.tiles[x][y];
+							manager.end->SetType(TileType::End);
+						}
+						else if (manager.tiles[x][y]->type == TileType::Wall) {
+							manager.tiles[x][y]->SetType(TileType::Empty);
+						}
+
+						
+					}
 				}
 			}
 		}
