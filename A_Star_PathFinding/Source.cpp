@@ -230,15 +230,20 @@ int FixedUpdate()
 
 		while (currentTile->previous != nullptr) {
 
-			sf::VertexArray* lines = new sf::VertexArray(sf::LineStrip, 2);
-			lines->operator[](0).position = sf::Vector2f(currentTile->sprite->getPosition().x + 10, currentTile->sprite->getPosition().y + 10);
-			lines->operator[](0).color = sf::Color::Green;
-			lines->operator[](1).position = sf::Vector2f(currentTile->previous->sprite->getPosition().x + 10, currentTile->previous->sprite->getPosition().y + 10);
-			lines->operator[](1).color = sf::Color::Green;
+			for (int i = 0; i <= 100; i++) {
+				sf::VertexArray* lines = new sf::VertexArray(sf::LineStrip, 2);
+				lines->operator[](0).position = sf::Vector2f(currentTile->sprite->getPosition().x + 10 + rand() % 2 * (rand() % 2 == 0 ? -1: 1), currentTile->sprite->getPosition().y + 10 + rand() % 2 * (rand() % 2 == 0 ? -1 : 1));
+				lines->operator[](0).color = sf::Color::Green;
+				lines->operator[](1).position = sf::Vector2f(currentTile->previous->sprite->getPosition().x + 10 + rand() % 2 * (rand() % 2 == 0 ? -1 : 1), currentTile->previous->sprite->getPosition().y + 10 + rand() % 2 * (rand() % 2 == 0 ? -1 : 1));
+				lines->operator[](1).color = sf::Color::Blue;
 
-			manager.lines.push_back(lines);
+				manager.lines.push_back(lines);
+			}
+
+			
 
 			currentTile = currentTile->previous;
+			
 		}
 
 
@@ -411,9 +416,9 @@ void CreateLine(CTile* _tile, CTile* _tile2)
 {
 	sf::VertexArray* lines = new sf::VertexArray(sf::LineStrip, 2);
 	lines->operator[](0).position = sf::Vector2f(_tile->sprite->getPosition().x + 10, _tile->sprite->getPosition().y + 10);
-	lines->operator[](0).color = sf::Color::Red;
+	lines->operator[](0).color = sf::Color::Color(0,0,255, 100);
 	lines->operator[](1).position = sf::Vector2f(_tile2->sprite->getPosition().x + 10, _tile2->sprite->getPosition().y + 10);
-	lines->operator[](1).color = sf::Color::Red;
+	lines->operator[](1).color = sf::Color::Color(255, 0, 0, 100);
 	manager.lines.push_back(lines);
 }
 
