@@ -1,3 +1,5 @@
+//The manager that takes care of lots of variables
+
 #pragma once
 #include "SFML/Graphics.hpp"
 #include "CTile.h"
