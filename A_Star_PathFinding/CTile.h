@@ -1,3 +1,5 @@
+//A Class for a tile/node
+
 #pragma once
 #include "SFML/Graphics.hpp"
 #include <iostream>
@@ -44,6 +46,7 @@ public:
 
 	void SetType(TileType _type);
 
+	//Used for sorting lists
 	static bool IsSmaller (const CTile* _tile, const CTile* _tile2)
 	{
 		return (_tile->f < _tile2->f);

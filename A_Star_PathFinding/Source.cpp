@@ -1,3 +1,27 @@
+////////////////////////////////////////////////////////////
+//========================================================//
+// Bachelor of Software Engineering                       //
+// Media Design School                                    //
+// Auckland                                               //
+// New Zealand                                            //
+//--------------------------------------------------------//
+// (c) 2020 Media Design School                           //
+//========================================================//
+//   File Name  :   Source.cpp                   
+//--------------------------------------------------------//
+//  Description : This program demonstrates an A* path finding algorithm.
+//                                                                                                           
+//--------------------------------------------------------//
+//    Author    : Keane Carotenuto & Nerys Thamm BSE20021                           
+//--------------------------------------------------------//
+//    E-mail    : 
+//		KeaneCarotenuto@gmail.com
+//		NerysThamm@gmail.com
+//========================================================//
+////////////////////////////////////////////////////////////
+
+
+//Includes
 #include <vector>
 #include <string>
 #include <iostream>
@@ -6,14 +30,12 @@
 #include <typeinfo>
 #include <SFML/Graphics.hpp>
 #include <SFML/Audio.hpp>
-
 #include <Windows.h>
-
 #include "CManager.h"
 #include "CTile.h"
 
 
-
+//Functions
 void CreateButton(void(*function)(), std::string _string, int _fontSize, sf::Color _tColour, sf::Text::Style _style, float _x, float _y, sf::Color _bgColour, float _padding);
 
 int FixedUpdate();
@@ -29,13 +51,16 @@ void Draw();
 
 CManager manager;
 
+//The Clickable Button's Functions
 void StartStopSearch() {
 	manager.startFinding = !manager.startFinding;
 	manager.Buttons[0]->text->setString(manager.startFinding ? "PAUSE" : "PLAY");
 	manager.Buttons[0]->rect->setFillColor(manager.startFinding ? sf::Color::Red : sf::Color::Color(0, 150, 0));
 }
 
+//Resets everything excluding walls
 void Reset() {
+	//Creates new tiles if needed, otherwise simply sets to default
 	for (int x = 0; x < 40; x++) {
 		for (int y = 0; y < 40; y++) {
 			if (manager.tiles[x][y] == nullptr) {
@@ -52,6 +77,7 @@ void Reset() {
 		}
 	}
 
+	//Defines important values
 	manager.start = manager.tiles[10][20];
 	manager.end = manager.tiles[30][20];
 
@@ -60,11 +86,13 @@ void Reset() {
 	manager.start->SetType(TileType::Start);
 	manager.end->SetType(TileType::End);
 
+	//Clears stacks
 	manager.searchStack.clear();
 	manager.tempStack.clear();
 	manager.doneStack.clear();
 	manager.searchStack.push_back(manager.start);
 
+	//Removes lines
 	for (sf::VertexArray* _vert : manager.lines)
 	{
 		delete _vert;
@@ -97,8 +125,10 @@ void Speed() {
 	manager.Buttons[4]->text->setString(std::to_string(60.0f / (float)manager.slowed).substr(0,4) +" steps/s");
 }
 
+//Start
 int main() {
-	sf::RenderWindow window(sf::VideoMode(800, 800), "A* Pathfinding - By Keane Carotenuto");
+	//Create Windows
+	sf::RenderWindow window(sf::VideoMode(800, 800), "A* Pathfinding - By Keane Carotenuto & Nerys Thamm");
 	sf::RenderWindow controlWindow(sf::VideoMode(200, 200), "Controls");
 	controlWindow.setPosition(sf::Vector2i(window.getPosition().x +  window.getSize().x, window.getPosition().y));
 
@@ -107,6 +137,7 @@ int main() {
 
 	if (!manager.font.loadFromFile("Fonts/Roboto.ttf")) std::cout << "Failed to load Roboto\n";
 
+	//Create Buttons
 	CreateButton(&StartStopSearch, "PLAY", 25, sf::Color::White, sf::Text::Style::Bold, 0, 0, sf::Color::Color(0,150,0), 5);
 	CreateButton(&Reset, "Reset", 25, sf::Color::White, sf::Text::Style::Bold, 0, 40, sf::Color::Red, 5);
 	CreateButton(&ClearWalls, "CLEAR WALLS", 25, sf::Color::White, sf::Text::Style::Bold, 0, 80, sf::Color::Red, 5);
@@ -118,7 +149,7 @@ int main() {
 	float stepTime = 0;
 	bool drawn = false;
 	
-
+	//Game loop
 	while (window.isOpen() == true)
 	{
 		stepTime += manager.clock.getElapsedTime().asSeconds();
@@ -126,7 +157,7 @@ int main() {
 
 		while (stepTime >= manager.step)
 		{
-			//Main Loop of Game
+			//Main Loop of Game Runs at fixed rate
 			if (FixedUpdate() == 0) return 0;
 
 			stepTime -= manager.step;
@@ -145,6 +176,7 @@ int main() {
 			drawn = true;
 		}
 
+		//Checks for Clickable buttons being pressed
 		CheckButtonsPressed();
 
 
@@ -163,13 +195,16 @@ int main() {
 	return 0;
 }
 
+//Fixed update runs ata  fixed time step rate
 int FixedUpdate()
 {
 	manager.currentStep ++;
 	manager.ToDrawList.clear();
 	
+	//The algorithm is called
 	AStar();
 
+	//Checks for mouse clicks
 	if (sf::Mouse::isButtonPressed(sf::Mouse::Left) || sf::Mouse::isButtonPressed(sf::Mouse::Right))
 	{
 		for (int x = 0; x < 40; x++) {
@@ -178,6 +213,7 @@ int FixedUpdate()
 
 				sf::Vector2f mousePos = (sf::Vector2f)sf::Mouse::getPosition(*manager.window);
 
+				//Creates walls, or shifts start point
 				if (manager.tiles[x][y]->sprite->getGlobalBounds().contains(mousePos)) {
 					if (sf::Mouse::isButtonPressed(sf::Mouse::Left) && manager.tiles[x][y]->type == TileType::Empty) {
 						if (sf::Keyboard::isKeyPressed(sf::Keyboard::LShift) && manager.startFinding == false) {
@@ -198,6 +234,7 @@ int FixedUpdate()
 						}
 						
 					}
+					//Deletes walls or shifts end point
 					if (sf::Mouse::isButtonPressed(sf::Mouse::Right)) {
 						if (sf::Keyboard::isKeyPressed(sf::Keyboard::LShift) && manager.startFinding == false && manager.tiles[x][y]->type == TileType::Empty) {
 							manager.end->SetType(TileType::Empty);
@@ -215,19 +252,21 @@ int FixedUpdate()
 		}
 	}
 
-
+	//Pushes all items to draw list
 	for (int x = 0; x < 40; x++) {
 		for (int y = 0; y < 40; y++) {
 			manager.ToDrawList.push_back(manager.tiles[x][y]);
 		}
 	}
 
+	//Pauses the game and draws the final route
 	if (manager.foundRoute && !manager.drawnRoute) {
 		StartStopSearch();
 		manager.drawnRoute = true;
 
 		CTile* currentTile = manager.end;
 
+		//Draws lines between selected tiles from end to start
 		while (currentTile->previous != nullptr) {
 
 			for (int i = 0; i <= 100; i++) {
@@ -249,6 +288,7 @@ int FixedUpdate()
 
 	}
 
+	//Pushes lines to be drawn
 	for (sf::VertexArray* _line : manager.lines) {
 		manager.ToDrawList.push_back(_line);
 	}
@@ -276,6 +316,7 @@ void AStar() {
 			}
 		}
 
+		//Processes a tile and its neighbours
 		for (CTile* _tile : manager.searchStack) {
 			if (_tile == manager.searchStack[0]) {
 				std::vector<CTile*> neighbours = GetNeighbours(_tile);
@@ -284,6 +325,7 @@ void AStar() {
 			}
 		}
 
+		//If found end
 		done:
 
 		for (CTile* _tile : toAdd) {
@@ -299,23 +341,26 @@ void AStar() {
 
 void ProcessTile(CTile* _tile, std::vector<CTile*>& neighbours, std::vector<CTile*>& toAdd, std::vector<CTile*>& toRemove)
 {
+	//Checks all neighbours and adds them to the search list
 	for (CTile* _neighbour : neighbours) {
 		if (!DoesTileExistInVector(_neighbour, manager.searchStack) && !DoesTileExistInVector(_neighbour, manager.doneStack) && !DoesTileExistInVector(_neighbour, toAdd)) {
 			toAdd.push_back(_neighbour);
 			if (_neighbour->type != TileType::Start && _neighbour->type != TileType::End) _neighbour->SetType(TileType::EmptySearching);
 		}
 
+		//Checks if neighbour is the goal tile
 		if (_neighbour == manager.end) {
 			manager.foundRoute = true;
 		}
 	}
 	
-
+	//Sets the style of a tile, and moves done tiles to done stack
 	if (_tile->type != TileType::Start && _tile->type != TileType::End) _tile->SetType(TileType::EmptySearched);
 	if (!DoesTileExistInVector(_tile, manager.doneStack)) manager.doneStack.push_back(_tile);
 	toRemove.push_back(_tile);
 }
 
+//Removes a tile for a vector
 void RemoveTileFromVector(CTile* _tile, std::vector<CTile*>& _vector)
 {
 	std::vector<CTile*>::iterator pos = std::find(_vector.begin(), _vector.end(), _tile);
@@ -324,6 +369,7 @@ void RemoveTileFromVector(CTile* _tile, std::vector<CTile*>& _vector)
 	}
 }
 
+//Checks if tile exists in vector
 bool DoesTileExistInVector(CTile* _tile, std::vector<CTile*>& _vector)
 {
 	if (_vector.empty()) return false;
@@ -337,9 +383,11 @@ bool DoesTileExistInVector(CTile* _tile, std::vector<CTile*>& _vector)
 	}
 }
 
+//Finds all neighbours and calcualtes thier values
 std::vector<CTile*> GetNeighbours(CTile* _tile) {
 	std::vector<CTile*> neigh;
 
+	//If diagonal or not, do in specific pattern (kinda long)
 	for (int i = 0; i < (manager.allowDiagonal ? 8 : 4); i++) {
 
 		int tempx = 0;
@@ -387,6 +435,7 @@ std::vector<CTile*> GetNeighbours(CTile* _tile) {
 			break;
 		}
 
+		//Discards bad neighbours
 		if (tempx < 0 || tempx > 39 || tempy < 0 || tempy > 39) continue;
 
 		CTile* tempN = manager.tiles[tempx][tempy];
@@ -394,7 +443,7 @@ std::vector<CTile*> GetNeighbours(CTile* _tile) {
 		if (DoesTileExistInVector(tempN, manager.doneStack)) continue;
 		if (tempN->type == TileType::Wall) continue;
 
-
+		//Calculates values
 		float tempC = _tile->c + FindDistanceToTile(_tile, tempN);
 		if (tempN->c > tempC) {
 			tempN->c = tempC;
@@ -405,13 +454,14 @@ std::vector<CTile*> GetNeighbours(CTile* _tile) {
 		tempN->f = tempN->c + tempN->d;
 		
 
-
+		//Adds to list
 		neigh.push_back(tempN);
 	}
 
 	return neigh;
 }
 
+//Creates a line between two tiles
 void CreateLine(CTile* _tile, CTile* _tile2)
 {
 	sf::VertexArray* lines = new sf::VertexArray(sf::LineStrip, 2);
@@ -422,6 +472,7 @@ void CreateLine(CTile* _tile, CTile* _tile2)
 	manager.lines.push_back(lines);
 }
 
+//Finds dist between two tiles depending on Diag mode or not
 float FindDistanceToTile(CTile * start, CTile * end)
 {
 	float dist = 0;
@@ -436,7 +487,7 @@ float FindDistanceToTile(CTile * start, CTile * end)
 }
 
 
-
+//Checks if a button has been pressed then executes function tied to button
 void CheckButtonsPressed()
 {
 	if (sf::Mouse::isButtonPressed(sf::Mouse::Button::Left)) {
@@ -458,6 +509,7 @@ void CheckButtonsPressed()
 	}
 }
 
+//Creates a clickable button with a function
 void CreateButton(void(*function)(), std::string _string, int _fontSize, sf::Color _tColour, sf::Text::Style _style, float _x, float _y, sf::Color _bgColour, float _padding)
 {
 	sf::Text* tempText = new sf::Text;
@@ -481,6 +533,7 @@ void CreateButton(void(*function)(), std::string _string, int _fontSize, sf::Col
 	//manager.controlWindow->setSize(sf::Vector2u( (float)200, (float)buttonRect->getGlobalBounds().top + (float)buttonRect->getGlobalBounds().height));
 }
 
+//Draws everything that needs to be drawn to screen
 void Draw()
 {
 	manager.window->clear();

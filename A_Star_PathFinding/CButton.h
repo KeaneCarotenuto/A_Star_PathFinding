@@ -1,3 +1,5 @@
+//A Class for clickable buttons
+
 #pragma once
 #include <SFML/Graphics.hpp>
 
